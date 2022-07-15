@@ -1,0 +1,39 @@
+version: '3.8'
+services:
+  streamlit:
+    platform: linux/amd64
+    image: "python:3.10-slim-bullseye"
+    volumes:
+      - ./:/app
+    command: |
+      bash -c "cd app/ && pip install streamlit && streamlit run main_page.py"
+    ports:
+      - "8501:8501"
+  selenium:
+    platform: linux/amd64
+    image: selenium/standalone-chrome-debug:3.141
+    shm_size: 2gb
+    ports:
+      - "4444" # Selenium
+  streamlit_test:
+    platform: linux/amd64
+    image: "python:3.10-slim-bullseye"
+    volumes:
+      - ./:/app
+    command: |
+      bash -c " cd app && chmod +x wait-for-it.sh && 
+      ./wait-for-it.sh streamlit:8501 && 
+      pip install seleniumbase && 
+      pytest --headed --server selenium --port 4444"
+    environment:
+      PYTHONUNBUFFERED: 1
+    depends_on:
+      - selenium
+      - streamlit
+    deploy:
+      restart_policy:
+        condition: on-failure
+        delay: 3s
+        max_attempts: 5
+    stdin_open: true # docker run -i
+    tty: true        # docker run -t
